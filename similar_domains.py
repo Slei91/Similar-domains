@@ -1,9 +1,9 @@
 import string
-import dns.resolver
+import dns.asyncresolver
 from itertools import product
 import homoglyphs as hg
-import concurrent.futures
 import click
+import asyncio
 
 
 class SimilarDomains:
@@ -32,7 +32,7 @@ class SimilarDomains:
         """
         return ['.'.join(item) for item in product(words_list, self.DOMAIN_ZONES)]
 
-    def run(self):
+    async def run(self):
         """Запускает логику подбора похожих доменов.
 
         Выполняется применение стратегий формирования ключевых слов доменного имени,
@@ -43,12 +43,15 @@ class SimilarDomains:
         self.apply_strategies()
         domains = self.get_domains_list(self.words_after_applying_strategies)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-            for d_name in domains:
-                executor.submit(self.request_domain, d_name)
+        tasks = []
+        for domain in domains:
+            task = asyncio.create_task(self.request_domain(domain))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
         print(self.existing_domains)
 
-    def request_domain(self, domain):
+    async def request_domain(self, domain):
         """Получает ip запросом к днс по доменному имени.
 
         :param domain: Доменное имя
@@ -56,9 +59,10 @@ class SimilarDomains:
         :return: None
         """
         try:
-            ip = dns.resolver.resolve(domain, 'A', lifetime=1)[0].to_text()
+            coro = await dns.asyncresolver.resolve(domain, 'A', lifetime=1)
+            ip = coro[0].to_text()
             self.existing_domains.append((domain, ip))
-        except dns.resolver.NXDOMAIN:
+        except dns.asyncresolver.NXDOMAIN:
             print(f'Домена {domain} не существует')
         except Exception:
             pass
@@ -135,7 +139,7 @@ def similar_domains_run(words):
     WORDS - ключевые слова.
     """
     obj = SimilarDomains(words)
-    obj.run()
+    asyncio.run(obj.run())
 
 
 if __name__ == '__main__':
