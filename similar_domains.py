@@ -3,6 +3,7 @@ import dns.resolver
 from itertools import product
 import homoglyphs as hg
 import concurrent.futures
+import click
 
 
 class SimilarDomains:
@@ -126,5 +127,16 @@ class SimilarDomains:
             self.words_after_applying_strategies.extend(self._strategy_delete_one_character(word))
 
 
-test = SimilarDomains(['ozon'])
-test.run()
+@click.command()
+@click.argument('words', nargs=-1)
+def similar_domains_run(words):
+    """Скрипт подбора похожих доменов.
+
+    WORDS - ключевые слова.
+    """
+    obj = SimilarDomains(words)
+    obj.run()
+
+
+if __name__ == '__main__':
+    similar_domains_run()
