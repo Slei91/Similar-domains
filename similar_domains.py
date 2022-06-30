@@ -47,9 +47,11 @@ class SimilarDomains:
         for domain in domains:
             task = asyncio.create_task(self.request_domain(domain))
             tasks.append(task)
+
         await asyncio.gather(*tasks)
 
-        print(self.existing_domains)
+        for item in self.existing_domains:
+            print(item[0], item[1])
 
     async def request_domain(self, domain):
         """Получает ip запросом к днс по доменному имени.
@@ -63,8 +65,8 @@ class SimilarDomains:
             ip = coro[0].to_text()
             self.existing_domains.append((domain, ip))
         except dns.asyncresolver.NXDOMAIN:
-            print(f'Домена {domain} не существует')
-        except Exception:
+            pass
+        except Exception as ex:
             pass
 
     @staticmethod
@@ -76,7 +78,8 @@ class SimilarDomains:
         :return: Список сформированых доменных имен
         :rtype: list
         """
-        return [word + i for i in string.ascii_letters]
+        result = [word + i for i in string.ascii_letters]
+        return result
 
     @staticmethod
     def _strategy_homoglyph(word):
@@ -87,7 +90,7 @@ class SimilarDomains:
         :return: Список сформированых доменных имен
         :rtype: list
         """
-        homoglyphs = hg.Homoglyphs(categories=('LATIN', 'CYRILLIC'), strategy=hg.STRATEGY_LOAD)
+        homoglyphs = hg.Homoglyphs(languages=('en', 'ru'), categories=('LATIN', 'CYRILLIC'), strategy=hg.STRATEGY_LOAD)
         result = homoglyphs.get_combinations(word)
         return result
 
